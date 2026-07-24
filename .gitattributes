@@ -1,0 +1,5 @@
+# kaitai-struct-compiler emits LF line endings. Force LF for the .ksy sources and
+# shell scripts so they stay stable across Windows/Linux.
+*.ksy text eol=lf
+tools/*.sh text eol=lf
+*.py text eol=lf

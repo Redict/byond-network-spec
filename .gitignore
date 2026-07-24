@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+*.pyc
+
+# Generated parsers are not tracked - produce them with tools/regen.ps1.
+generated/

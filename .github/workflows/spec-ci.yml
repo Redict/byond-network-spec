@@ -1,0 +1,46 @@
+name: spec-ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  compile:
+    name: compile specs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (for kaitai-struct-compiler)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install kaitai-struct-compiler 0.11 (pinned)
+        run: |
+          curl -fsSL -o /tmp/ksc.zip \
+            https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler-0.11.zip
+          unzip -q /tmp/ksc.zip -d "$HOME/ksc"
+          echo "$HOME/ksc/kaitai-struct-compiler-0.11/bin" >> "$GITHUB_PATH"
+
+      - name: Verify pinned compiler
+        run: kaitai-struct-compiler --version | grep -q '0.11'
+
+      # Compile every spec to Python (read-only + read-write). This is the spec
+      # repo's own gate: the .ksy must all compile with the pinned toolchain.
+      - name: Compile specs to Python
+        run: bash tools/regen.sh
+
+      # Cross-language canary: compile the same specs to Rust to catch expression
+      # incompatibilities early (strict types surface them before other targets).
+      # NOTE: use --outdir, not -d. The launcher script intercepts -d as its own
+      # --debug flag and swallows it, so the output dir would be treated as an input.
+      - name: Cross-language compile canary (Rust)
+        run: |
+          mkdir -p /tmp/ksy-rust
+          kaitai-struct-compiler -t rust --import-path ksy \
+            --outdir /tmp/ksy-rust ksy/*.ksy ksy/common/*.ksy ksy/transport/*.ksy
+          echo "Rust generation succeeded for all specs."
